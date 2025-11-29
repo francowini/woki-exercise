@@ -7,9 +7,6 @@ import {
   TableId,
   Booking,
   BookingId,
-  toRestaurantId,
-  toSectorId,
-  toTableId,
   now,
 } from '../domain/types';
 import seedData from '../data/seed.json';
@@ -19,8 +16,6 @@ class Database {
   private sectors = new Map<SectorId, Sector>();
   private tables = new Map<TableId, Table>();
   private bookings = new Map<BookingId, Booking>();
-
-  // Index for efficient sector->tables lookup
   private tablesBySector = new Map<SectorId, TableId[]>();
 
   constructor() {
@@ -28,48 +23,29 @@ class Database {
   }
 
   private loadSeed(): void {
-    const timestamp = now();
+    const ts = now();
 
     for (const r of seedData.restaurants) {
-      const id = toRestaurantId(r.id);
-      this.restaurants.set(id, {
-        ...r,
-        id,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Restaurant);
+      const id = r.id as RestaurantId;
+      this.restaurants.set(id, { ...r, id, createdAt: ts, updatedAt: ts } as Restaurant);
     }
 
     for (const s of seedData.sectors) {
-      const id = toSectorId(s.id);
-      const restaurantId = toRestaurantId(s.restaurantId);
-      this.sectors.set(id, {
-        ...s,
-        id,
-        restaurantId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Sector);
+      const id = s.id as SectorId;
+      const restaurantId = s.restaurantId as RestaurantId;
+      this.sectors.set(id, { ...s, id, restaurantId, createdAt: ts, updatedAt: ts } as Sector);
     }
 
     for (const t of seedData.tables) {
-      const id = toTableId(t.id);
-      const sectorId = toSectorId(t.sectorId);
-      this.tables.set(id, {
-        ...t,
-        id,
-        sectorId,
-        createdAt: timestamp,
-        updatedAt: timestamp,
-      } as Table);
+      const id = t.id as TableId;
+      const sectorId = t.sectorId as SectorId;
+      this.tables.set(id, { ...t, id, sectorId, createdAt: ts, updatedAt: ts } as Table);
 
-      // Build index
       const existing = this.tablesBySector.get(sectorId) || [];
       this.tablesBySector.set(sectorId, [...existing, id]);
     }
   }
 
-  // Restaurant queries
   getRestaurant(id: RestaurantId): Restaurant | undefined {
     return this.restaurants.get(id);
   }
@@ -78,42 +54,35 @@ class Database {
     return Array.from(this.restaurants.values());
   }
 
-  // Sector queries
   getSector(id: SectorId): Sector | undefined {
     return this.sectors.get(id);
   }
 
   getSectorsByRestaurant(restaurantId: RestaurantId): Sector[] {
-    return Array.from(this.sectors.values()).filter(
-      s => s.restaurantId === restaurantId
-    );
+    return Array.from(this.sectors.values()).filter(s => s.restaurantId === restaurantId);
   }
 
-  // Table queries
   getTable(id: TableId): Table | undefined {
     return this.tables.get(id);
   }
 
   getTablesBySector(sectorId: SectorId): Table[] {
     const ids = this.tablesBySector.get(sectorId) || [];
-    return ids.map(id => this.tables.get(id)!).filter(Boolean);
+    return ids.map(id => this.tables.get(id)).filter((t): t is Table => t !== undefined);
   }
 
-  // Booking queries
   getBooking(id: BookingId): Booking | undefined {
     return this.bookings.get(id);
   }
 
-  getBookingsByRestaurant(restaurantId: RestaurantId): Booking[] {
+  getBookingsByTable(tableId: TableId): Booking[] {
     return Array.from(this.bookings.values()).filter(
-      b => b.restaurantId === restaurantId
+      b => b.tableIds.includes(tableId) && b.status === 'CONFIRMED'
     );
   }
 
   getBookingsBySector(sectorId: SectorId): Booking[] {
-    return Array.from(this.bookings.values()).filter(
-      b => b.sectorId === sectorId
-    );
+    return Array.from(this.bookings.values()).filter(b => b.sectorId === sectorId);
   }
 
   createBooking(booking: Booking): Booking {

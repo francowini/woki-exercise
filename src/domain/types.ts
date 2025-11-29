@@ -10,10 +10,6 @@ export type TableId = string & { [tableIdBrand]: true };
 declare const bookingIdBrand: unique symbol;
 export type BookingId = string & { [bookingIdBrand]: true };
 
-export const toRestaurantId = (s: string): RestaurantId => s as RestaurantId;
-export const toSectorId = (s: string): SectorId => s as SectorId;
-export const toTableId = (s: string): TableId => s as TableId;
-export const toBookingId = (s: string): BookingId => s as BookingId;
 
 export type ISODateTime = string;
 
