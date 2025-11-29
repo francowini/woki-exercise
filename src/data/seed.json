@@ -1,0 +1,57 @@
+{
+  "restaurants": [
+    {
+      "id": "R1",
+      "name": "Bistro Central",
+      "timezone": "America/Argentina/Buenos_Aires",
+      "windows": [
+        { "start": "12:00", "end": "15:30" },
+        { "start": "19:30", "end": "23:45" }
+      ]
+    }
+  ],
+  "sectors": [
+    {
+      "id": "S1",
+      "restaurantId": "R1",
+      "name": "Main Hall"
+    }
+  ],
+  "tables": [
+    {
+      "id": "T1",
+      "sectorId": "S1",
+      "name": "Mesa 1",
+      "minSize": 1,
+      "maxSize": 2
+    },
+    {
+      "id": "T2",
+      "sectorId": "S1",
+      "name": "Mesa 2",
+      "minSize": 2,
+      "maxSize": 4
+    },
+    {
+      "id": "T3",
+      "sectorId": "S1",
+      "name": "Mesa 3",
+      "minSize": 2,
+      "maxSize": 4
+    },
+    {
+      "id": "T4",
+      "sectorId": "S1",
+      "name": "Mesa 4",
+      "minSize": 4,
+      "maxSize": 6
+    },
+    {
+      "id": "T5",
+      "sectorId": "S1",
+      "name": "Mesa 5",
+      "minSize": 4,
+      "maxSize": 6
+    }
+  ]
+}
