@@ -1,0 +1,44 @@
+meta {
+  name: Create Booking
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{BASE_URL}}/woki/bookings
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: test-booking-001
+}
+
+body:json {
+  {
+    "restaurantId": "R1",
+    "sectorId": "S1",
+    "partySize": 4,
+    "durationMinutes": 90,
+    "date": "2025-10-22",
+    "windowStart": "19:00",
+    "windowEnd": "22:00"
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq CONFIRMED
+  res.body.tableIds: isDefined
+}
+
+tests {
+  test("booking created with CONFIRMED status", function() {
+    expect(res.body.status).to.equal("CONFIRMED");
+  });
+  
+  test("tableIds is an array", function() {
+    expect(res.body.tableIds).to.be.an("array");
+  });
+}
