@@ -141,3 +141,21 @@ export async function createBooking(input: CreateBookingInput, idempotencyKey?: 
 
   return booking;
 }
+
+export async function deleteBooking(id: string): Promise<void> {
+  const booking = db.getBooking(id as BookingId);
+  if (!booking) {
+    const err = new Error('Booking not found');
+    (err as any).code = 'not_found';
+    (err as any).statusCode = 404;
+    throw err;
+  }
+
+  const result = db.updateBooking(id as BookingId, { status: 'CANCELLED' });
+  if (!result) {
+    const err = new Error('Failed to delete booking');
+    (err as any).code = 'internal_error';
+    (err as any).statusCode = 500;
+    throw err;
+  }
+}

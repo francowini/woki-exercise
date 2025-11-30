@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
-import { bookingBody, dayQuery } from '../schemas';
-import { createBooking } from '../services/bookings';
+import { bookingBody, dayQuery, bookingIdParam } from '../schemas';
+import { createBooking, deleteBooking } from '../services/bookings';
 import { db } from '../store/db';
 import { RestaurantId, SectorId } from '../domain/types';
 
@@ -93,5 +93,37 @@ export async function bookingRoutes(app: FastifyInstance) {
     }));
 
     return reply.status(200).send({ date, items });
+  });
+
+  app.delete('/woki/bookings/:id', async (req, reply) => {
+    const parsed = bookingIdParam.safeParse(req.params);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const field = issue?.path?.join('.') || 'unknown';
+      return reply.status(400).send({
+        error: 'invalid_input',
+        detail: `${field}: ${issue?.message || 'Invalid value'}`,
+      });
+    }
+
+    try {
+      await deleteBooking(parsed.data.id);
+      return reply.status(204).send();
+    } catch (error) {
+      if (error instanceof Error) {
+        const code = (error as any).code || 'internal_error';
+        const statusCode = (error as any).statusCode || 500;
+        return reply.status(statusCode).send({
+          error: code,
+          detail: error.message,
+        });
+      }
+
+      app.log.error(error);
+      return reply.status(500).send({
+        error: 'internal_error',
+        detail: 'An unexpected error occurred',
+      });
+    }
   });
 }
