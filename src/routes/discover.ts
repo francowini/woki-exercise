@@ -3,6 +3,7 @@ import { discoverQuery } from '../schemas';
 import { db } from '../store/db';
 import { findAllAvailableSlots, AvailableSlot } from '../services/availability';
 import { selectBestSlot } from '../services/wokibrain';
+import { toMinutes, toMinutesFromISO, toISO, SLOT_GRID_MINUTES } from '../utils/time';
 
 interface Candidate {
   kind: 'single' | 'combo';
@@ -12,22 +13,6 @@ interface Candidate {
   maxCapacity: number;
   start: string;
   end: string;
-}
-
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function toMinutesFromISO(iso: string): number {
-  const d = new Date(iso);
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
-}
-
-function toISO(date: string, minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${date}T${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00Z`;
 }
 
 export async function discoverRoutes(app: FastifyInstance) {
@@ -43,7 +28,7 @@ export async function discoverRoutes(app: FastifyInstance) {
       });
     }
 
-    const { restaurantId, sectorId, date, partySize, duration, windowStart, windowEnd } = parsed.data;
+    const { restaurantId, sectorId, date, partySize, duration, windowStart, windowEnd, limit } = parsed.data;
 
     const restaurant = db.getRestaurant(restaurantId);
     if (!restaurant) {
@@ -96,7 +81,9 @@ export async function discoverRoutes(app: FastifyInstance) {
 
     const best = selectBestSlot(filtered, partySize, refTime);
 
-    const candidates: Candidate[] = filtered.map(s => ({
+    const limited = limit ? filtered.slice(0, limit) : filtered;
+
+    const candidates: Candidate[] = limited.map(s => ({
       kind: s.tableIds.length === 1 ? 'single' : 'combo',
       tableIds: s.tableIds as string[],
       tableNames: s.tableNames,
@@ -107,7 +94,7 @@ export async function discoverRoutes(app: FastifyInstance) {
     }));
 
     return {
-      slotMinutes: 15,
+      slotMinutes: SLOT_GRID_MINUTES,
       durationMinutes: duration,
       best: best ? {
         kind: best.tableIds.length === 1 ? 'single' : 'combo',
