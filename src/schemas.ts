@@ -19,12 +19,16 @@ export const discoverQuery = z.object({
 });
 
 export const bookingBody = z.object({
-  restaurantId: z.string(),
-  sectorId: z.string(),
-  tableIds: z.array(z.string()).min(1),
+  restaurantId: z.string().min(1),
+  sectorId: z.string().min(1),
   partySize: z.number().int().positive(),
-  start: z.string().datetime(),
-  end: z.string().datetime(),
+  durationMinutes: z.number().int().refine(
+    n => n % 15 === 0 && n >= 30 && n <= 180,
+    '15-min grid, 30-180 range'
+  ),
+  date: z.string().regex(datePattern, 'date must be YYYY-MM-DD'),
+  windowStart: z.string().regex(timePattern),
+  windowEnd: z.string().regex(timePattern),
 });
 
 export const dayQuery = z.object({

@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import { discoverRoutes } from './routes/discover';
+import { bookingRoutes } from './routes/bookings';
 
 const app = Fastify({ logger: true });
 
@@ -8,6 +9,7 @@ app.get('/', async () => {
 });
 
 app.register(discoverRoutes);
+app.register(bookingRoutes);
 
 const start = async () => {
   try {
