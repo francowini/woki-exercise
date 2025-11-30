@@ -1,6 +1,8 @@
 import { FastifyInstance } from 'fastify';
-import { bookingBody } from '../schemas';
+import { bookingBody, dayQuery } from '../schemas';
 import { createBooking } from '../services/bookings';
+import { db } from '../store/db';
+import { RestaurantId, SectorId } from '../domain/types';
 
 export async function bookingRoutes(app: FastifyInstance) {
   app.post('/woki/bookings', async (req, reply) => {
@@ -47,5 +49,49 @@ export async function bookingRoutes(app: FastifyInstance) {
         detail: 'An unexpected error occurred',
       });
     }
+  });
+
+  app.get('/woki/bookings/day', async (req, reply) => {
+    const parsed = dayQuery.safeParse(req.query);
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const field = issue?.path?.join('.') || 'unknown';
+      return reply.status(400).send({
+        error: 'invalid_input',
+        detail: `${field}: ${issue?.message || 'Invalid value'}`,
+      });
+    }
+
+    const { restaurantId, sectorId, date } = parsed.data;
+
+    const restaurant = db.getRestaurant(restaurantId as RestaurantId);
+    if (!restaurant) {
+      return reply.status(404).send({
+        error: 'not_found',
+        detail: 'Restaurant not found',
+      });
+    }
+
+    const sector = db.getSector(sectorId as SectorId);
+    if (!sector || sector.restaurantId !== (restaurantId as RestaurantId)) {
+      return reply.status(404).send({
+        error: 'not_found',
+        detail: 'Sector not found',
+      });
+    }
+
+    const bookings = db.getBookingsBySector(sectorId as SectorId)
+      .filter(b => b.status === 'CONFIRMED' && b.start.startsWith(date));
+
+    const items = bookings.map(b => ({
+      id: b.id,
+      tableIds: b.tableIds,
+      partySize: b.partySize,
+      start: b.start,
+      end: b.end,
+      status: b.status,
+    }));
+
+    return reply.status(200).send({ date, items });
   });
 }

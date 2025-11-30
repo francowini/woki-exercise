@@ -1,0 +1,17 @@
+meta {
+  name: get-bookings-day
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{BASE_URL}}/woki/bookings/day?restaurantId=R1&sectorId=S1&date=2025-10-22
+  body: none
+  auth: none
+}
+
+params:query {
+  restaurantId: R1
+  sectorId: S1
+  date: 2025-10-22
+}
