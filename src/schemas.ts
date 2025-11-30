@@ -32,9 +32,9 @@ export const bookingBody = z.object({
 });
 
 export const dayQuery = z.object({
-  restaurantId: z.string(),
-  sectorId: z.string(),
-  date: z.string().regex(datePattern),
+  restaurantId: z.string().min(1),
+  sectorId: z.string().min(1),
+  date: z.string().regex(datePattern, 'date must be YYYY-MM-DD'),
 });
 
 export type DiscoverQuery = z.infer<typeof discoverQuery>;
