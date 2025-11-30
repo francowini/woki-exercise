@@ -1,4 +1,8 @@
 import { AvailableSlot } from './availability';
+import { toMinutesFromISO } from '../utils/time';
+
+const WASTE_WEIGHT = 100;
+const COMBO_PENALTY = 10;
 
 export function selectBestSlot(
   slots: AvailableSlot[],
@@ -15,7 +19,7 @@ export function selectBestSlot(
 
   scored.sort((a, b) => {
     if (a.score !== b.score) return a.score - b.score;
-    return a.slot.tableIds.join(',').localeCompare(b.slot.tableIds.join(','));
+    return (a.slot.tableIds[0] ?? '').localeCompare(b.slot.tableIds[0] ?? '');
   });
 
   return scored[0].slot;
@@ -26,11 +30,5 @@ function scoreSlot(slot: AvailableSlot, partySize: number, windowStart: string):
   const comboSize = slot.tableIds.length;
   const mins = toMinutesFromISO(slot.start) - toMinutesFromISO(windowStart);
 
-  // weighted: capacity waste >> combo size >> time
-  return (waste * 100) + (comboSize * 10) + mins;
-}
-
-function toMinutesFromISO(iso: string): number {
-  const d = new Date(iso);
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
+  return (waste * WASTE_WEIGHT) + (comboSize * COMBO_PENALTY) + mins;
 }

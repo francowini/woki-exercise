@@ -1,8 +1,9 @@
 import { db } from '../store/db';
 import { RestaurantId, SectorId, TableId, Table, ServiceWindow } from '../domain/types';
 import { findComboSlots } from './combos';
+import { toMinutes, toMinutesFromISO, toISO, SLOT_GRID_MINUTES } from '../utils/time';
 
-export interface TimeSlot {
+interface TimeSlot {
   start: string;
   end: string;
   tableId: TableId;
@@ -100,7 +101,7 @@ function addSlotsForGap(
   gapEnd: number,
   duration: number
 ): void {
-  let start = Math.ceil(gapStart / 15) * 15;
+  let start = Math.ceil(gapStart / SLOT_GRID_MINUTES) * SLOT_GRID_MINUTES;
 
   while (start + duration <= gapEnd) {
     slots.push({
@@ -109,28 +110,8 @@ function addSlotsForGap(
       tableId: table.id,
       tableName: table.name,
     });
-    start += 15;
+    start += SLOT_GRID_MINUTES;
   }
-}
-
-function toMinutes(hhmm: string): number {
-  const [h, m] = hhmm.split(':').map(Number);
-  return h * 60 + m;
-}
-
-function toMinutesFromISO(iso: string): number {
-  const d = new Date(iso);
-  return d.getUTCHours() * 60 + d.getUTCMinutes();
-}
-
-function toISO(date: string, minutes: number): string {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `${date}T${pad(h)}:${pad(m)}:00Z`;
-}
-
-function pad(n: number): string {
-  return n < 10 ? '0' + n : String(n);
 }
 
 export function findAllAvailableSlots(

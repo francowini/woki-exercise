@@ -15,6 +15,7 @@ export const discoverQuery = z.object({
   ),
   windowStart: z.string().regex(timePattern).optional(),
   windowEnd: z.string().regex(timePattern).optional(),
+  limit: z.coerce.number().int().positive().optional(),
 });
 
 export const bookingBody = z.object({
