@@ -151,7 +151,6 @@ function intersectTwo(a: Gap[], b: Gap[]): Gap[] {
       result.push({ start, end });
     }
 
-    // advance pointer with earlier end
     if (a[i].end < b[j].end) i++;
     else j++;
   }
@@ -167,7 +166,6 @@ function addSlotsFromGap(
   gap: Gap,
   duration: number
 ): void {
-  // round up to next 15-min slot
   let start = Math.ceil(gap.start / 15) * 15;
 
   while (start + duration <= gap.end) {
