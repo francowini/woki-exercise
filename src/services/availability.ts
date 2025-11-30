@@ -1,11 +1,21 @@
 import { db } from '../store/db';
 import { RestaurantId, SectorId, TableId, Table, ServiceWindow } from '../domain/types';
+import { findComboSlots } from './combos';
 
 export interface TimeSlot {
   start: string;
   end: string;
   tableId: TableId;
   tableName: string;
+}
+
+export interface AvailableSlot {
+  start: string;
+  end: string;
+  tableIds: TableId[];
+  tableNames: string[];
+  minCapacity: number;
+  maxCapacity: number;
 }
 
 export function findAvailableSlots(
@@ -121,4 +131,46 @@ function toISO(date: string, minutes: number): string {
 
 function pad(n: number): string {
   return n < 10 ? '0' + n : String(n);
+}
+
+export function findAllAvailableSlots(
+  restaurantId: string,
+  sectorId: string,
+  date: string,
+  partySize: number,
+  duration: number
+): AvailableSlot[] {
+  const restaurant = db.getRestaurant(restaurantId as RestaurantId);
+  if (!restaurant) return [];
+
+  const tables = db.getTablesBySector(sectorId as SectorId);
+  const windows = restaurant.windows || [];
+  if (windows.length === 0) return [];
+
+  const slots: AvailableSlot[] = [];
+
+  const singleFits = tables.filter(t => t.minSize <= partySize && t.maxSize >= partySize);
+  for (const table of singleFits) {
+    const tableSlots = findGapsForTable(table, date, windows, duration);
+    for (const s of tableSlots) {
+      slots.push({
+        start: s.start,
+        end: s.end,
+        tableIds: [s.tableId],
+        tableNames: [s.tableName],
+        minCapacity: table.minSize,
+        maxCapacity: table.maxSize,
+      });
+    }
+  }
+
+  const comboSlots = findComboSlots(restaurantId, sectorId, date, partySize, duration);
+  slots.push(...comboSlots);
+
+  slots.sort((a, b) => {
+    if (a.start !== b.start) return a.start < b.start ? -1 : 1;
+    return a.tableIds.join(',').localeCompare(b.tableIds.join(','));
+  });
+
+  return slots;
 }
