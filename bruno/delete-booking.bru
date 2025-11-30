@@ -1,0 +1,29 @@
+meta {
+  name: Delete Booking
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{BASE_URL}}/woki/bookings/{{bookingId}}
+  body: none
+  auth: none
+}
+
+vars:pre-request {
+  bookingId: <paste-booking-id-here>
+}
+
+assert {
+  res.status: eq 204
+}
+
+docs {
+  # Delete Booking
+
+  Cancel an existing booking by ID.
+
+  ## Response
+  - 204: Booking cancelled successfully
+  - 404: Booking not found
+}

@@ -37,6 +37,11 @@ export const dayQuery = z.object({
   date: z.string().regex(datePattern, 'date must be YYYY-MM-DD'),
 });
 
+export const bookingIdParam = z.object({
+  id: z.string().min(1),
+});
+
 export type DiscoverQuery = z.infer<typeof discoverQuery>;
 export type BookingBody = z.infer<typeof bookingBody>;
 export type DayQuery = z.infer<typeof dayQuery>;
+export type BookingIdParam = z.infer<typeof bookingIdParam>;

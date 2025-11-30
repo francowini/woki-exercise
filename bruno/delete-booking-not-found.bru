@@ -1,0 +1,22 @@
+meta {
+  name: Delete Booking Not Found
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{BASE_URL}}/woki/bookings/nonexistent-id
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq not_found
+}
+
+docs {
+  # Delete Booking - Not Found
+
+  Attempt to delete a booking that doesn't exist.
+}
