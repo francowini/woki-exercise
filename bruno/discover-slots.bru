@@ -1,0 +1,19 @@
+meta {
+  name: Discover Slots
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-12-01&partySize=4&duration=60
+  body: none
+  auth: none
+}
+
+params:query {
+  restaurantId: R1
+  sectorId: S1
+  date: 2025-12-01
+  partySize: 4
+  duration: 60
+}
