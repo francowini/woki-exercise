@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import { discoverRoutes } from './routes/discover';
 import { bookingRoutes } from './routes/bookings';
+import { metricsRoutes } from './routes/metrics';
 import { logger } from './middleware/logger';
 
 const app = Fastify({ logger });
@@ -11,6 +12,7 @@ app.get('/', async () => {
 
 app.register(discoverRoutes);
 app.register(bookingRoutes);
+app.register(metricsRoutes);
 
 const start = async () => {
   try {

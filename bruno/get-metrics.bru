@@ -1,0 +1,48 @@
+meta {
+  name: Get Metrics
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{BASE_URL}}/metrics
+  body: none
+  auth: none
+}
+
+docs {
+  # GET /metrics
+
+  Returns operational metrics for monitoring.
+
+  ## Response
+
+  ```json
+  {
+    "bookings": {
+      "created": 5,
+      "cancelled": 1,
+      "conflicts": 2
+    },
+    "locks": {
+      "acquired": 7,
+      "waits": 1,
+      "contentionRate": 0.143
+    },
+    "timing": {
+      "assignmentP95Ms": 45,
+      "sampleCount": 5
+    }
+  }
+  ```
+
+  ## Metrics Explained
+
+  - **bookings.created**: Total confirmed bookings
+  - **bookings.cancelled**: Total cancelled via DELETE
+  - **bookings.conflicts**: 409 responses (no_capacity)
+  - **locks.acquired**: Total lock acquisitions
+  - **locks.waits**: Times a request waited on existing lock
+  - **locks.contentionRate**: waits / acquired ratio
+  - **timing.assignmentP95Ms**: 95th percentile of booking creation time (ms)
+}

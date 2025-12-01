@@ -1,4 +1,5 @@
 import { SectorId, TableId, ISODateTime } from '../domain/types';
+import { metrics } from './metrics';
 
 type LockKey = string & { readonly __lockKey: unique symbol };
 
@@ -20,7 +21,12 @@ class LockManager {
     const key = this.createKey(sectorId, tableIds, start);
 
     const existing = this.locks.get(key);
-    if (existing) await existing;
+    if (existing) {
+      metrics.incLockWait();
+      await existing;
+    }
+
+    metrics.incLockAcquired();
 
     let releaseLock: () => void;
     const lockPromise = new Promise<void>(resolve => {

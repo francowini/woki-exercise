@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db } from '../store/db';
 import { lockManager } from '../store/locks';
 import { idempotencyStore } from '../store/idempotency';
+import { metrics } from '../store/metrics';
 import { RestaurantId, SectorId, TableId, Booking, BookingId, now } from '../domain/types';
 import { findAllAvailableSlots } from './availability';
 import { selectBestSlot } from './wokibrain';
@@ -77,6 +78,7 @@ export async function createBooking(input: CreateBookingInput, idempotencyKey?: 
   });
 
   if (slots.length === 0) {
+    metrics.incConflict();
     const err = new Error('No available slots for the requested party');
     (err as any).code = 'no_capacity';
     (err as any).statusCode = 409;
@@ -85,11 +87,14 @@ export async function createBooking(input: CreateBookingInput, idempotencyKey?: 
 
   const selected = selectBestSlot(slots, input.partySize, `${input.date}T${input.windowStart}:00Z`);
   if (!selected) {
+    metrics.incConflict();
     const err = new Error('No suitable slot found');
     (err as any).code = 'no_capacity';
     (err as any).statusCode = 409;
     throw err;
   }
+
+  const startTime = Date.now();
 
   const booking = await lockManager.acquire(
     input.sectorId as SectorId,
@@ -109,6 +114,7 @@ export async function createBooking(input: CreateBookingInput, idempotencyKey?: 
       );
 
       if (!stillAvailable) {
+        metrics.incConflict();
         const err = new Error('Selected slot is no longer available');
         (err as any).code = 'no_capacity';
         (err as any).statusCode = 409;
@@ -135,10 +141,12 @@ export async function createBooking(input: CreateBookingInput, idempotencyKey?: 
         idempotencyStore.set(idempotencyKey, created);
       }
 
+      metrics.incCreated();
       return created;
     }
   );
 
+  metrics.recordAssignmentTime(Date.now() - startTime);
   return booking;
 }
 
@@ -158,4 +166,6 @@ export async function deleteBooking(id: string): Promise<void> {
     (err as any).statusCode = 500;
     throw err;
   }
+
+  metrics.incCancelled();
 }
