@@ -1,11 +1,25 @@
 meta {
   name: Discover - Not Found
   type: http
-  seq: 3
+  seq: 4
 }
 
 get {
-  url: {{BASE_URL}}/woki/discover?restaurantId=INVALID&sectorId=S1&date=2025-12-01&partySize=4&duration=60
+  url: {{BASE_URL}}/woki/discover?restaurantId=INVALID&sectorId=S1&date=2025-10-22&partySize=4&duration=60
   body: none
   auth: none
+}
+
+assert {
+  res.status: eq 404
+  res.body.error: eq not_found
+}
+
+docs {
+  # Discover - Restaurant No Encontrado
+
+  Caso de error: restaurantId inválido.
+
+  ## Expected Response
+  - 404: { "error": "not_found" }
 }

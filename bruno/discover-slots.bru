@@ -5,15 +5,29 @@ meta {
 }
 
 get {
-  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-12-01&partySize=4&duration=60
+  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=4&duration=60
   body: none
   auth: none
 }
 
-params:query {
-  restaurantId: R1
-  sectorId: S1
-  date: 2025-12-01
-  partySize: 4
-  duration: 60
+docs {
+  # Discover Available Slots
+
+  Busca slots disponibles para una reserva sin crearla.
+  WokiBrain devuelve candidatos ordenados por score.
+
+  ## Query Parameters
+  - restaurantId: ID del restaurante
+  - sectorId: ID del sector
+  - date: Fecha en formato YYYY-MM-DD
+  - partySize: Cantidad de personas
+  - duration: Duración en minutos (múltiplo de 15)
+  - windowStart: (opcional) Hora inicio HH:mm
+  - windowEnd: (opcional) Hora fin HH:mm
+
+  ## Response
+  - 200: Lista de candidatos (single o combo)
+  - 404: Restaurant/sector not found
+  - 409: No capacity available
+  - 422: Outside service window
 }

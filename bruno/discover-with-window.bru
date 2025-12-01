@@ -1,11 +1,21 @@
 meta {
   name: Discover - With Window Filter
   type: http
-  seq: 6
+  seq: 3
 }
 
 get {
-  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-12-01&partySize=4&duration=60&windowStart=20:00&windowEnd=22:00
+  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=4&duration=60&windowStart=20:00&windowEnd=22:00
   body: none
   auth: none
+}
+
+docs {
+  # Discover con Filtro de Ventana
+
+  Busca slots dentro de una ventana horaria específica.
+  Solo devuelve candidatos entre 20:00 y 22:00.
+
+  ## Response
+  - 200: Candidatos filtrados por ventana
 }

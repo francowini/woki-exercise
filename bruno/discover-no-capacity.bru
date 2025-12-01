@@ -1,11 +1,26 @@
 meta {
   name: Discover - No Capacity
   type: http
-  seq: 4
+  seq: 5
 }
 
 get {
-  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-12-01&partySize=100&duration=60
+  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=100&duration=60
   body: none
   auth: none
+}
+
+assert {
+  res.status: eq 409
+  res.body.error: eq no_capacity
+}
+
+docs {
+  # Discover - Sin Capacidad
+
+  Caso de error: partySize=100 excede la capacidad de todas
+  las mesas y combos posibles.
+
+  ## Expected Response
+  - 409: { "error": "no_capacity" }
 }

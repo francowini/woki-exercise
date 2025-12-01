@@ -1,17 +1,13 @@
 meta {
   name: Delete Booking
   type: http
-  seq: 5
+  seq: 10
 }
 
 delete {
-  url: {{BASE_URL}}/woki/bookings/{{bookingId}}
+  url: {{BASE_URL}}/woki/bookings/B1
   body: none
   auth: none
-}
-
-vars:pre-request {
-  bookingId: <paste-booking-id-here>
 }
 
 assert {
@@ -21,9 +17,18 @@ assert {
 docs {
   # Delete Booking
 
-  Cancel an existing booking by ID.
+  Cancela una reserva existente por su ID.
+  El slot queda disponible inmediatamente.
+
+  ## Path Parameters
+  - id: ID del booking (ej: B1 del seed data)
 
   ## Response
-  - 204: Booking cancelled successfully
-  - 404: Booking not found
+  - 204: Booking cancelado (sin body)
+  - 404: not_found
+
+  ## Uso
+  1. Primero crear un booking con POST /woki/bookings
+  2. Copiar el ID del response
+  3. Reemplazar B1 en la URL por el ID obtenido
 }

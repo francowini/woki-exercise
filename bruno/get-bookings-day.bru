@@ -1,7 +1,7 @@
 meta {
-  name: get-bookings-day
+  name: Get Bookings Day
   type: http
-  seq: 4
+  seq: 9
 }
 
 get {
@@ -10,8 +10,21 @@ get {
   auth: none
 }
 
-params:query {
-  restaurantId: R1
-  sectorId: S1
-  date: 2025-10-22
+docs {
+  # Get Bookings for Day
+
+  Lista todas las reservas CONFIRMED de un sector en un día específico.
+
+  ## Query Parameters
+  - restaurantId: ID del restaurante
+  - sectorId: ID del sector
+  - date: Fecha YYYY-MM-DD
+
+  ## Response
+  - 200: { date, items: [...bookings] }
+  - 404: not_found (restaurant/sector)
+
+  ## Nota
+  Solo devuelve bookings con status CONFIRMED.
+  Los CANCELLED no aparecen en la lista.
 }

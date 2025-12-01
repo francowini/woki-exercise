@@ -1,11 +1,28 @@
 meta {
-  name: Discover - Outside Window
+  name: Discover - Outside Service Window
   type: http
-  seq: 5
+  seq: 6
 }
 
 get {
-  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-12-01&partySize=4&duration=60&windowStart=03:00&windowEnd=04:00
+  url: {{BASE_URL}}/woki/discover?restaurantId=R1&sectorId=S1&date=2025-10-22&partySize=4&duration=60&windowStart=03:00&windowEnd=04:00
   body: none
   auth: none
+}
+
+assert {
+  res.status: eq 422
+  res.body.error: eq outside_service_window
+}
+
+docs {
+  # Discover - Fuera de Horario de Servicio
+
+  Caso de error: la ventana solicitada (03:00-04:00) está
+  fuera del horario de servicio del restaurante.
+
+  Service windows del seed: 12:00-16:00 y 20:00-23:45
+
+  ## Expected Response
+  - 422: { "error": "outside_service_window" }
 }

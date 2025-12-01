@@ -1,7 +1,7 @@
 meta {
-  name: Delete Booking Not Found
+  name: Delete Booking - Not Found
   type: http
-  seq: 6
+  seq: 11
 }
 
 delete {
@@ -16,7 +16,10 @@ assert {
 }
 
 docs {
-  # Delete Booking - Not Found
+  # Delete Booking - No Encontrado
 
-  Attempt to delete a booking that doesn't exist.
+  Caso de error: intento de cancelar un booking que no existe.
+
+  ## Expected Response
+  - 404: { "error": "not_found" }
 }

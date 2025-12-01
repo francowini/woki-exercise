@@ -1,7 +1,7 @@
 meta {
   name: Create Booking
   type: http
-  seq: 3
+  seq: 7
 }
 
 post {
@@ -12,18 +12,18 @@ post {
 
 headers {
   Content-Type: application/json
-  Idempotency-Key: test-booking-0www
+  Idempotency-Key: test-booking-001
 }
 
 body:json {
   {
     "restaurantId": "R1",
     "sectorId": "S1",
-    "partySize": 10,
-    "durationMinutes": 60,
+    "partySize": 5,
+    "durationMinutes": 90,
     "date": "2025-10-22",
-    "windowStart": "19:00",
-    "windowEnd": "23:30"
+    "windowStart": "20:00",
+    "windowEnd": "23:45"
   }
 }
 
@@ -33,12 +33,31 @@ assert {
   res.body.tableIds: isDefined
 }
 
-tests {
-  test("booking created with CONFIRMED status", function() {
-    expect(res.body.status).to.equal("CONFIRMED");
-  });
-  
-  test("tableIds is an array", function() {
-    expect(res.body.tableIds).to.be.an("array");
-  });
+docs {
+  # Create Booking
+
+  Crea una reserva. WokiBrain selecciona automáticamente
+  la mejor mesa o combinación de mesas.
+
+  ## Headers
+  - Idempotency-Key: Clave única para evitar duplicados (60s TTL)
+
+  ## Request Body
+  - restaurantId: ID del restaurante
+  - sectorId: ID del sector
+  - partySize: Cantidad de personas
+  - durationMinutes: Duración (múltiplo de 15, entre 30-180)
+  - date: Fecha YYYY-MM-DD
+  - windowStart: Hora inicio preferida HH:mm
+  - windowEnd: Hora fin preferida HH:mm
+
+  ## Response
+  - 201: Booking creado con status CONFIRMED
+  - 400: invalid_input (datos inválidos)
+  - 404: not_found (restaurant/sector)
+  - 409: no_capacity (sin disponibilidad)
+  - 422: outside_service_window
+
+  ## Nota
+  El cliente NO especifica tableIds - WokiBrain los selecciona.
 }

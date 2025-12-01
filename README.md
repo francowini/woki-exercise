@@ -130,24 +130,28 @@ We use [Bruno](https://www.usebruno.com/) for API testing because:
 - **No cloud sync:** Everything stays local, no account needed
 - **Readable format:** `.bru` files are human-readable
 
-### Running Tests
+### How to Use
 
 1. Install Bruno (https://www.usebruno.com/downloads)
 2. Open the `bruno/` folder as a collection
 3. Select "local" environment
-4. Run requests individually or use Runner
+4. Run requests individually
 
-### Test Files
+### Request Collection
 
-| File | Scenario |
-|------|----------|
-| `discover-slots.bru` | Happy path - find available slots |
-| `discover-no-capacity.bru` | Party too large |
-| `discover-outside-window.bru` | Request outside service hours |
-| `create-booking.bru` | Create valid booking |
-| `create-booking-no-capacity.bru` | No capacity returns 409 |
-| `get-bookings-day.bru` | List day's bookings |
-| `delete-booking.bru` | Cancel booking |
+| # | File | Endpoint | Description |
+|---|------|----------|-------------|
+| 1 | `health-check.bru` | GET / | Verify server is running |
+| 2 | `discover-slots.bru` | GET /woki/discover | Find available slots |
+| 3 | `discover-with-window.bru` | GET /woki/discover | Filter by time window |
+| 4 | `discover-not-found.bru` | GET /woki/discover | 404 error case |
+| 5 | `discover-no-capacity.bru` | GET /woki/discover | 409 error case |
+| 6 | `discover-outside-window.bru` | GET /woki/discover | 422 error case |
+| 7 | `create-booking.bru` | POST /woki/bookings | Create booking |
+| 8 | `create-booking-no-capacity.bru` | POST /woki/bookings | 409 error case |
+| 9 | `get-bookings-day.bru` | GET /woki/bookings/day | List day's bookings |
+| 10 | `delete-booking.bru` | DELETE /woki/bookings/:id | Cancel booking |
+| 11 | `delete-booking-not-found.bru` | DELETE /woki/bookings/:id | 404 error case |
 
 ## Error Codes
 
