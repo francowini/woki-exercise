@@ -73,6 +73,34 @@ GET /woki/bookings/day?restaurantId=R1&sectorId=S1&date=2025-10-22
 
 Cancelar una reserva. Retorna 204.
 
+### `GET /metrics`
+
+Métricas operacionales para monitoreo (Bonus B8).
+
+```json
+{
+  "bookings": {
+    "created": 5,
+    "cancelled": 1,
+    "conflicts": 2
+  },
+  "locks": {
+    "acquired": 7,
+    "waits": 1,
+    "contentionRate": 0.143
+  },
+  "timing": {
+    "assignmentP95Ms": 45,
+    "sampleCount": 5
+  }
+}
+```
+
+**Métricas:**
+- `bookings.created/cancelled/conflicts` — Contador por cada resultado de reserva
+- `locks.contentionRate` — Ratio de requests que esperaron por un lock (mayor = más contención)
+- `timing.assignmentP95Ms` — Percentil 95 del tiempo de creación de reserva en ms
+
 ## Diseño del Algoritmo
 
 ### Heurística de Capacidad para Combos
@@ -152,6 +180,7 @@ Usamos [Bruno](https://www.usebruno.com/) para testing de API porque:
 | 9 | `get-bookings-day.bru` | GET /woki/bookings/day | Listar reservas del día |
 | 10 | `delete-booking.bru` | DELETE /woki/bookings/:id | Cancelar reserva |
 | 11 | `delete-booking-not-found.bru` | DELETE /woki/bookings/:id | Caso error 404 |
+| 12 | `get-metrics.bru` | GET /metrics | Obtener métricas operacionales |
 
 ## Códigos de Error
 
@@ -190,3 +219,14 @@ Para producción, las interfaces del store (`db.ts`) podrían intercambiarse por
 ## Datos
 
 Los datos semilla se cargan desde `src/data/seed.json` al iniciar. Incluye un restaurante con 5 mesas (rango de capacidad 2-6 por mesa).
+
+## Referencia del Ejercicio
+
+Este proyecto implementa el challenge del motor de reservas WokiBrain. Ver [exercise.md](./exercise.md) para la especificación completa incluyendo:
+
+- Requisitos core (§1-§6)
+- Criterios de aceptación (§6)
+- Casos de test (§7)
+- Features bonus (§12)
+
+**Bonus implementado:** B8 - Observability (endpoint `/metrics`)
