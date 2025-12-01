@@ -1,8 +1,9 @@
 import Fastify from 'fastify';
 import { discoverRoutes } from './routes/discover';
 import { bookingRoutes } from './routes/bookings';
+import { logger } from './middleware/logger';
 
-const app = Fastify({ logger: true });
+const app = Fastify({ logger });
 
 app.get('/', async () => {
   return { message: 'WokiBrain API' };
