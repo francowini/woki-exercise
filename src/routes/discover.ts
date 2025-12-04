@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { discoverQuery } from '../schemas';
-import { db } from '../store/db';
-import { findAllAvailableSlots } from '../services/availability';
+import { Database } from '../store/db';
+import { createAvailabilityService } from '../services/availability';
 import { toMinutes, toMinutesFromISO, SLOT_GRID_MINUTES } from '../utils/time';
 
 interface Candidate {
@@ -11,7 +11,16 @@ interface Candidate {
   end: string;
 }
 
-export async function discoverRoutes(app: FastifyInstance) {
+type AvailabilityService = ReturnType<typeof createAvailabilityService>;
+
+interface DiscoverRoutesOpts {
+  db: Database;
+  availabilityService: AvailabilityService;
+}
+
+export async function discoverRoutes(app: FastifyInstance, opts: DiscoverRoutesOpts) {
+  const { db, availabilityService } = opts;
+
   app.get('/woki/discover', async (req, reply) => {
     const parsed = discoverQuery.safeParse(req.query);
     if (!parsed.success) {
@@ -53,7 +62,7 @@ export async function discoverRoutes(app: FastifyInstance) {
       }
     }
 
-    const allSlots = findAllAvailableSlots(restaurantId, sectorId, date, partySize, duration);
+    const allSlots = availabilityService.findAllAvailableSlots(restaurantId, sectorId, date, partySize, duration);
 
     let filtered = allSlots;
     if (windowStart && windowEnd) {

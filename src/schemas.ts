@@ -19,8 +19,8 @@ export const discoverQuery = z.object({
 });
 
 export const bookingBody = z.object({
-  restaurantId: z.string().min(1),
-  sectorId: z.string().min(1),
+  restaurantId: z.string().min(1).transform(s => s as RestaurantId),
+  sectorId: z.string().min(1).transform(s => s as SectorId),
   partySize: z.number().int().positive(),
   durationMinutes: z.number().int().refine(
     n => n % 15 === 0 && n >= 30 && n <= 180,
@@ -32,8 +32,8 @@ export const bookingBody = z.object({
 });
 
 export const dayQuery = z.object({
-  restaurantId: z.string().min(1),
-  sectorId: z.string().min(1),
+  restaurantId: z.string().min(1).transform(s => s as RestaurantId),
+  sectorId: z.string().min(1).transform(s => s as SectorId),
   date: z.string().regex(datePattern, 'date must be YYYY-MM-DD'),
 });
 

@@ -1,10 +1,12 @@
 import { SectorId, TableId, ISODateTime } from '../domain/types';
-import { metrics } from './metrics';
+import { MetricsStore } from './metrics';
 
 type LockKey = string & { readonly __lockKey: unique symbol };
 
-class LockManager {
+export class LockManager {
   private locks = new Map<LockKey, Promise<void>>();
+
+  constructor(private metrics: MetricsStore) {}
 
   private createKey(sectorId: SectorId, tableIds: TableId[], start: ISODateTime): LockKey {
     const sortedTables = [...tableIds].sort();
@@ -22,11 +24,11 @@ class LockManager {
 
     const existing = this.locks.get(key);
     if (existing) {
-      metrics.incLockWait();
+      this.metrics.incLockWait();
       await existing;
     }
 
-    metrics.incLockAcquired();
+    this.metrics.incLockAcquired();
 
     let releaseLock: () => void;
     const lockPromise = new Promise<void>(resolve => {
@@ -43,5 +45,3 @@ class LockManager {
     }
   }
 }
-
-export const lockManager = new LockManager();

@@ -1,10 +1,17 @@
 import { FastifyInstance } from 'fastify';
 import { bookingBody, dayQuery, bookingIdParam } from '../schemas';
-import { createBooking, deleteBooking } from '../services/bookings';
-import { db } from '../store/db';
-import { RestaurantId, SectorId } from '../domain/types';
+import { Database } from '../store/db';
+import { BookingService } from '../services/bookings';
+import { BookingId } from '../domain/types';
 
-export async function bookingRoutes(app: FastifyInstance) {
+interface BookingRoutesOpts {
+  db: Database;
+  bookingService: BookingService;
+}
+
+export async function bookingRoutes(app: FastifyInstance, opts: BookingRoutesOpts) {
+  const { db, bookingService } = opts;
+
   app.post('/woki/bookings', async (req, reply) => {
     const parsed = bookingBody.safeParse(req.body);
     if (!parsed.success) {
@@ -18,7 +25,7 @@ export async function bookingRoutes(app: FastifyInstance) {
 
     try {
       const idempotencyKey = req.headers['idempotency-key'] as string | undefined;
-      const booking = await createBooking(parsed.data, idempotencyKey);
+      const booking = await bookingService.createBooking(parsed.data, idempotencyKey);
 
       return reply.status(201).send({
         id: booking.id,
@@ -64,7 +71,7 @@ export async function bookingRoutes(app: FastifyInstance) {
 
     const { restaurantId, sectorId, date } = parsed.data;
 
-    const restaurant = db.getRestaurant(restaurantId as RestaurantId);
+    const restaurant = db.getRestaurant(restaurantId);
     if (!restaurant) {
       return reply.status(404).send({
         error: 'not_found',
@@ -72,15 +79,15 @@ export async function bookingRoutes(app: FastifyInstance) {
       });
     }
 
-    const sector = db.getSector(sectorId as SectorId);
-    if (!sector || sector.restaurantId !== (restaurantId as RestaurantId)) {
+    const sector = db.getSector(sectorId);
+    if (!sector || sector.restaurantId !== restaurantId) {
       return reply.status(404).send({
         error: 'not_found',
         detail: 'Sector not found',
       });
     }
 
-    const bookings = db.getBookingsBySector(sectorId as SectorId)
+    const bookings = db.getBookingsBySector(sectorId)
       .filter(b => b.status === 'CONFIRMED' && b.start.startsWith(date));
 
     const items = bookings.map(b => ({
@@ -107,7 +114,7 @@ export async function bookingRoutes(app: FastifyInstance) {
     }
 
     try {
-      await deleteBooking(parsed.data.id);
+      await bookingService.deleteBooking(parsed.data.id as BookingId);
       return reply.status(204).send();
     } catch (error) {
       if (error instanceof Error) {
