@@ -85,38 +85,6 @@ export function createAvailabilityService(db: Database) {
     }
   }
 
-  function findAvailableSlots(
-    restaurantId: RestaurantId,
-    sectorId: SectorId,
-    date: string,
-    partySize: number,
-    duration: number
-  ): TimeSlot[] {
-    const restaurant = db.getRestaurant(restaurantId);
-    if (!restaurant) return [];
-
-    const tables = db.getTablesBySector(sectorId);
-    const fits = tables.filter(t => t.minSize <= partySize && t.maxSize >= partySize);
-    if (fits.length === 0) return [];
-
-    const windows = restaurant.windows || [];
-    if (windows.length === 0) return [];
-
-    const slots: TimeSlot[] = [];
-
-    for (const table of fits) {
-      const tableSlots = findGapsForTable(table, date, windows, duration);
-      slots.push(...tableSlots);
-    }
-
-    slots.sort((a, b) => {
-      if (a.start !== b.start) return a.start < b.start ? -1 : 1;
-      return a.tableName.localeCompare(b.tableName);
-    });
-
-    return slots;
-  }
-
   function findAllAvailableSlots(
     restaurantId: RestaurantId,
     sectorId: SectorId,
@@ -159,5 +127,5 @@ export function createAvailabilityService(db: Database) {
     return slots;
   }
 
-  return { findAvailableSlots, findAllAvailableSlots };
+  return { findAllAvailableSlots };
 }
