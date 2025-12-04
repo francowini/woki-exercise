@@ -1,4 +1,4 @@
-import { db } from '../store/db';
+import { Database } from '../store/db';
 import { Table, TableId, ServiceWindow, SectorId, RestaurantId } from '../domain/types';
 import { toMinutes, toMinutesFromISO, toISO, SLOT_GRID_MINUTES } from '../utils/time';
 
@@ -16,70 +16,166 @@ interface Gap {
   end: number;
 }
 
-export function findComboSlots(
-  restaurantId: string,
-  sectorId: string,
-  date: string,
-  partySize: number,
-  duration: number
-): ComboSlot[] {
-  const restaurant = db.getRestaurant(restaurantId as RestaurantId);
-  if (!restaurant) return [];
+export function createComboService(db: Database) {
+  function findComboSlots(
+    restaurantId: RestaurantId,
+    sectorId: SectorId,
+    date: string,
+    partySize: number,
+    duration: number
+  ): ComboSlot[] {
+    const restaurant = db.getRestaurant(restaurantId);
+    if (!restaurant) return [];
 
-  const tables = db.getTablesBySector(sectorId as SectorId);
-  if (tables.length < 2) return [];
+    const tables = db.getTablesBySector(sectorId);
+    if (tables.length < 2) return [];
 
-  const windows = restaurant.windows || [];
-  if (windows.length === 0) return [];
+    const windows = restaurant.windows || [];
+    if (windows.length === 0) return [];
 
-  const combos = generateCombos(tables, partySize);
-  const slots: ComboSlot[] = [];
+    const combos = generateCombos(tables, partySize);
+    const slots: ComboSlot[] = [];
 
-  for (const combo of combos) {
-    const cap = getComboCapacity(combo);
+    for (const combo of combos) {
+      const cap = getComboCapacity(combo);
+      const gapSets = combo.map(t => getTableGaps(t, date, windows));
+      const intersected = intersectGaps(gapSets);
 
-    const gapSets = combo.map(t => getTableGaps(t, date, windows));
-    const intersected = intersectGaps(gapSets);
-
-    for (const gap of intersected) {
-      addSlotsFromGap(slots, combo, cap, date, gap, duration);
+      for (const gap of intersected) {
+        addSlotsFromGap(slots, combo, cap, date, gap, duration);
+      }
     }
+
+    slots.sort((a, b) => {
+      if (a.start !== b.start) return a.start < b.start ? -1 : 1;
+      return a.tableIds.join(',').localeCompare(b.tableIds.join(','));
+    });
+
+    return slots;
   }
 
-  slots.sort((a, b) => {
-    if (a.start !== b.start) return a.start < b.start ? -1 : 1;
-    return a.tableIds.join(',').localeCompare(b.tableIds.join(','));
-  });
+  function generateCombos(tables: Table[], partySize: number): Table[][] {
+    const combos: Table[][] = [];
 
-  return slots;
-}
+    for (let size = 2; size <= tables.length; size++) {
+      for (const combo of combinations(tables, size)) {
+        const cap = getComboCapacity(combo);
+        if (cap.min <= partySize && cap.max >= partySize) {
+          combos.push(combo);
+        }
+      }
+    }
 
-function generateCombos(tables: Table[], partySize: number): Table[][] {
-  const combos: Table[][] = [];
+    return combos;
+  }
 
-  for (let size = 2; size <= tables.length; size++) {
-    for (const combo of combinations(tables, size)) {
-      const cap = getComboCapacity(combo);
-      if (cap.min <= partySize && cap.max >= partySize) {
-        combos.push(combo);
+  function* combinations<T>(arr: T[], size: number): Generator<T[]> {
+    if (size === 0) {
+      yield [];
+      return;
+    }
+
+    for (let i = 0; i <= arr.length - size; i++) {
+      for (const rest of combinations(arr.slice(i + 1), size - 1)) {
+        yield [arr[i], ...rest];
       }
     }
   }
 
-  return combos;
-}
+  function getTableGaps(table: Table, date: string, windows: ServiceWindow[]): Gap[] {
+    const bookings = db.getBookingsByTable(table.id);
+    const dayBookings = bookings.filter(b => b.start.startsWith(date));
+    dayBookings.sort((a, b) => (a.start < b.start ? -1 : 1));
 
-function* combinations<T>(arr: T[], size: number): Generator<T[]> {
-  if (size === 0) {
-    yield [];
-    return;
+    const gaps: Gap[] = [];
+
+    for (const window of windows) {
+      const wStart = toMinutes(window.start);
+      const wEnd = toMinutes(window.end);
+
+      const relevant = dayBookings.filter(b => {
+        const bStart = toMinutesFromISO(b.start);
+        const bEnd = toMinutesFromISO(b.end);
+        return bStart < wEnd && bEnd > wStart;
+      });
+
+      let cursor = wStart;
+
+      for (const booking of relevant) {
+        const bStart = toMinutesFromISO(booking.start);
+        const bEnd = toMinutesFromISO(booking.end);
+
+        if (cursor < bStart) {
+          gaps.push({ start: cursor, end: bStart });
+        }
+        cursor = Math.max(cursor, bEnd);
+      }
+
+      if (cursor < wEnd) {
+        gaps.push({ start: cursor, end: wEnd });
+      }
+    }
+
+    return gaps;
   }
 
-  for (let i = 0; i <= arr.length - size; i++) {
-    for (const rest of combinations(arr.slice(i + 1), size - 1)) {
-      yield [arr[i], ...rest];
+  function intersectGaps(gapSets: Gap[][]): Gap[] {
+    if (gapSets.length === 0) return [];
+    if (gapSets.length === 1) return gapSets[0];
+
+    let result = gapSets[0];
+
+    for (let i = 1; i < gapSets.length; i++) {
+      result = intersectTwo(result, gapSets[i]);
+      if (result.length === 0) break;
+    }
+
+    return result;
+  }
+
+  function intersectTwo(a: Gap[], b: Gap[]): Gap[] {
+    const result: Gap[] = [];
+    let i = 0, j = 0;
+
+    while (i < a.length && j < b.length) {
+      const start = Math.max(a[i].start, b[j].start);
+      const end = Math.min(a[i].end, b[j].end);
+
+      if (start < end) {
+        result.push({ start, end });
+      }
+
+      if (a[i].end < b[j].end) i++;
+      else j++;
+    }
+
+    return result;
+  }
+
+  function addSlotsFromGap(
+    slots: ComboSlot[],
+    combo: Table[],
+    cap: { min: number; max: number },
+    date: string,
+    gap: Gap,
+    duration: number
+  ): void {
+    let start = Math.ceil(gap.start / SLOT_GRID_MINUTES) * SLOT_GRID_MINUTES;
+
+    while (start + duration <= gap.end) {
+      slots.push({
+        start: toISO(date, start),
+        end: toISO(date, start + duration),
+        tableIds: combo.map(t => t.id),
+        tableNames: combo.map(t => t.name),
+        minCapacity: cap.min,
+        maxCapacity: cap.max,
+      });
+      start += SLOT_GRID_MINUTES;
     }
   }
+
+  return { findComboSlots };
 }
 
 export function getComboCapacity(tables: Table[]): { min: number; max: number } {
@@ -87,97 +183,4 @@ export function getComboCapacity(tables: Table[]): { min: number; max: number } 
     min: tables.reduce((sum, t) => sum + t.minSize, 0),
     max: tables.reduce((sum, t) => sum + t.maxSize, 0),
   };
-}
-
-function getTableGaps(table: Table, date: string, windows: ServiceWindow[]): Gap[] {
-  const bookings = db.getBookingsByTable(table.id);
-  const dayBookings = bookings.filter(b => b.start.startsWith(date));
-  dayBookings.sort((a, b) => (a.start < b.start ? -1 : 1));
-
-  const gaps: Gap[] = [];
-
-  for (const window of windows) {
-    const wStart = toMinutes(window.start);
-    const wEnd = toMinutes(window.end);
-
-    const relevant = dayBookings.filter(b => {
-      const bStart = toMinutesFromISO(b.start);
-      const bEnd = toMinutesFromISO(b.end);
-      return bStart < wEnd && bEnd > wStart;
-    });
-
-    let cursor = wStart;
-
-    for (const booking of relevant) {
-      const bStart = toMinutesFromISO(booking.start);
-      const bEnd = toMinutesFromISO(booking.end);
-
-      if (cursor < bStart) {
-        gaps.push({ start: cursor, end: bStart });
-      }
-      cursor = Math.max(cursor, bEnd);
-    }
-
-    if (cursor < wEnd) {
-      gaps.push({ start: cursor, end: wEnd });
-    }
-  }
-
-  return gaps;
-}
-
-function intersectGaps(gapSets: Gap[][]): Gap[] {
-  if (gapSets.length === 0) return [];
-  if (gapSets.length === 1) return gapSets[0];
-
-  let result = gapSets[0];
-
-  for (let i = 1; i < gapSets.length; i++) {
-    result = intersectTwo(result, gapSets[i]);
-    if (result.length === 0) break;
-  }
-
-  return result;
-}
-
-function intersectTwo(a: Gap[], b: Gap[]): Gap[] {
-  const result: Gap[] = [];
-  let i = 0, j = 0;
-
-  while (i < a.length && j < b.length) {
-    const start = Math.max(a[i].start, b[j].start);
-    const end = Math.min(a[i].end, b[j].end);
-
-    if (start < end) {
-      result.push({ start, end });
-    }
-
-    if (a[i].end < b[j].end) i++;
-    else j++;
-  }
-
-  return result;
-}
-
-function addSlotsFromGap(
-  slots: ComboSlot[],
-  combo: Table[],
-  cap: { min: number; max: number },
-  date: string,
-  gap: Gap,
-  duration: number
-): void {
-  let start = Math.ceil(gap.start / SLOT_GRID_MINUTES) * SLOT_GRID_MINUTES;
-
-  while (start + duration <= gap.end) {
-    slots.push({
-      start: toISO(date, start),
-      end: toISO(date, start + duration),
-      tableIds: combo.map(t => t.id),
-      tableNames: combo.map(t => t.name),
-      minCapacity: cap.min,
-      maxCapacity: cap.max,
-    });
-    start += SLOT_GRID_MINUTES;
-  }
 }

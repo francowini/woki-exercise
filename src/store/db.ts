@@ -11,7 +11,7 @@ import {
 } from '../domain/types';
 import seedData from '../data/seed.json';
 
-class Database {
+export class Database {
   private restaurants = new Map<RestaurantId, Restaurant>();
   private sectors = new Map<SectorId, Sector>();
   private tables = new Map<TableId, Table>();
@@ -98,5 +98,3 @@ class Database {
     return updated;
   }
 }
-
-export const db = new Database();

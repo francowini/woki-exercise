@@ -1,26 +1,30 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createBooking, deleteBooking } from './bookings';
-import { db } from '../store/db';
-import { idempotencyStore } from '../store/idempotency';
-import { SectorId, BookingId } from '../domain/types';
-
-function clearBookings() {
-  const all = db.getBookingsBySector('S1' as SectorId);
-  for (const b of all) {
-    db.updateBooking(b.id, { status: 'CANCELLED' });
-  }
-}
+import { Database } from '../store/db';
+import { MetricsStore } from '../store/metrics';
+import { LockManager } from '../store/locks';
+import { IdempotencyStore } from '../store/idempotency';
+import { createBookingService } from './bookings';
+import { RestaurantId, SectorId, BookingId } from '../domain/types';
 
 describe('createBooking', () => {
+  let db: Database;
+  let metrics: MetricsStore;
+  let lockManager: LockManager;
+  let idempotencyStore: IdempotencyStore;
+  let bookingService: ReturnType<typeof createBookingService>;
+
   beforeEach(() => {
-    clearBookings();
-    idempotencyStore.clear();
+    db = new Database();
+    metrics = new MetricsStore();
+    lockManager = new LockManager(metrics);
+    idempotencyStore = new IdempotencyStore();
+    bookingService = createBookingService({ db, lockManager, idempotencyStore, metrics });
   });
 
   it('books single table for party that fits', async () => {
-    const booking = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const booking = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 5,
       durationMinutes: 90,
       date: '2025-12-15',
@@ -34,9 +38,9 @@ describe('createBooking', () => {
   });
 
   it('books combo when party exceeds single table capacity', async () => {
-    const booking = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const booking = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 10,
       durationMinutes: 60,
       date: '2025-12-15',
@@ -49,9 +53,9 @@ describe('createBooking', () => {
   });
 
   it('allows adjacent bookings (end-exclusive)', async () => {
-    const first = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const first = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-15',
@@ -59,9 +63,9 @@ describe('createBooking', () => {
       windowEnd: '13:00',
     });
 
-    const second = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const second = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-15',
@@ -75,8 +79,8 @@ describe('createBooking', () => {
 
   it('returns same booking with same idempotency key', async () => {
     const input = {
-      restaurantId: 'R1',
-      sectorId: 'S1',
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 4,
       durationMinutes: 90,
       date: '2025-12-15',
@@ -85,45 +89,44 @@ describe('createBooking', () => {
     };
     const key = 'idem-key-123';
 
-    const first = await createBooking(input, key);
-    const second = await createBooking(input, key);
+    const first = await bookingService.createBooking(input, key);
+    const second = await bookingService.createBooking(input, key);
 
     expect(first.id).toBe(second.id);
     expect(first.tableIds).toEqual(second.tableIds);
   });
 
   it('one wins when two requests race for same slot', async () => {
-    // Book 4 tables first, leaving only 1 available
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 5,
       durationMinutes: 180,
       date: '2025-12-15',
       windowStart: '12:00',
       windowEnd: '15:30',
     });
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 5,
       durationMinutes: 180,
       date: '2025-12-15',
       windowStart: '12:00',
       windowEnd: '15:30',
     });
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 180,
       date: '2025-12-15',
       windowStart: '12:00',
       windowEnd: '15:30',
     });
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 180,
       date: '2025-12-15',
@@ -131,10 +134,9 @@ describe('createBooking', () => {
       windowEnd: '15:30',
     });
 
-    // Now race for the last table
     const input = {
-      restaurantId: 'R1',
-      sectorId: 'S1',
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 180,
       date: '2025-12-15',
@@ -143,8 +145,8 @@ describe('createBooking', () => {
     };
 
     const results = await Promise.allSettled([
-      createBooking(input),
-      createBooking(input),
+      bookingService.createBooking(input),
+      bookingService.createBooking(input),
     ]);
 
     const ok = results.filter(r => r.status === 'fulfilled');
@@ -156,9 +158,9 @@ describe('createBooking', () => {
 
   it('rejects window outside service hours with 422', async () => {
     try {
-      await createBooking({
-        restaurantId: 'R1',
-        sectorId: 'S1',
+      await bookingService.createBooking({
+        restaurantId: 'R1' as RestaurantId,
+        sectorId: 'S1' as SectorId,
         partySize: 2,
         durationMinutes: 60,
         date: '2025-12-15',
@@ -174,15 +176,24 @@ describe('createBooking', () => {
 });
 
 describe('deleteBooking', () => {
+  let db: Database;
+  let metrics: MetricsStore;
+  let lockManager: LockManager;
+  let idempotencyStore: IdempotencyStore;
+  let bookingService: ReturnType<typeof createBookingService>;
+
   beforeEach(() => {
-    clearBookings();
-    idempotencyStore.clear();
+    db = new Database();
+    metrics = new MetricsStore();
+    lockManager = new LockManager(metrics);
+    idempotencyStore = new IdempotencyStore();
+    bookingService = createBookingService({ db, lockManager, idempotencyStore, metrics });
   });
 
   it('cancels existing booking', async () => {
-    const booking = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const booking = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-15',
@@ -190,15 +201,15 @@ describe('deleteBooking', () => {
       windowEnd: '14:00',
     });
 
-    await deleteBooking(booking.id);
+    await bookingService.deleteBooking(booking.id);
 
-    const updated = db.getBooking(booking.id as BookingId);
+    const updated = db.getBooking(booking.id);
     expect(updated?.status).toBe('CANCELLED');
   });
 
   it('throws 404 for non-existent booking', async () => {
     try {
-      await deleteBooking('bogus-id');
+      await bookingService.deleteBooking('bogus-id' as BookingId);
       expect.fail('should throw');
     } catch (err: any) {
       expect(err.statusCode).toBe(404);

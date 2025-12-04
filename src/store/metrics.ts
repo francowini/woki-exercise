@@ -3,7 +3,7 @@ interface TimingSample {
   ts: number;
 }
 
-class MetricsStore {
+export class MetricsStore {
   private bookingsCreated = 0;
   private bookingsCancelled = 0;
   private bookingConflicts = 0;
@@ -69,5 +69,3 @@ class MetricsStore {
     };
   }
 }
-
-export const metrics = new MetricsStore();

@@ -7,7 +7,7 @@ interface IdempotencyEntry<T> {
   expiresAt: ISODateTime;
 }
 
-class IdempotencyStore {
+export class IdempotencyStore {
   private entries = new Map<IdempotencyKey, IdempotencyEntry<any>>();
   private readonly ttl = 60;
 
@@ -35,5 +35,3 @@ class IdempotencyStore {
     this.entries.clear();
   }
 }
-
-export const idempotencyStore = new IdempotencyStore();

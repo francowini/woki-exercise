@@ -1,29 +1,32 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createBooking, deleteBooking } from '../services/bookings';
-import { db } from './db';
-import { idempotencyStore } from './idempotency';
-import { metrics } from './metrics';
-import { SectorId } from '../domain/types';
-
-function clearBookings() {
-  const all = db.getBookingsBySector('S1' as SectorId);
-  for (const b of all) {
-    db.updateBooking(b.id, { status: 'CANCELLED' });
-  }
-}
+import { Database } from './db';
+import { MetricsStore } from './metrics';
+import { LockManager } from './locks';
+import { IdempotencyStore } from './idempotency';
+import { createBookingService } from '../services/bookings';
+import { RestaurantId, SectorId } from '../domain/types';
 
 describe('metrics', () => {
+  let db: Database;
+  let metrics: MetricsStore;
+  let lockManager: LockManager;
+  let idempotencyStore: IdempotencyStore;
+  let bookingService: ReturnType<typeof createBookingService>;
+
   beforeEach(() => {
-    clearBookings();
-    idempotencyStore.clear();
+    db = new Database();
+    metrics = new MetricsStore();
+    lockManager = new LockManager(metrics);
+    idempotencyStore = new IdempotencyStore();
+    bookingService = createBookingService({ db, lockManager, idempotencyStore, metrics });
   });
 
   it('tracks booking created count', async () => {
     const before = metrics.getSnapshot();
 
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-20',
@@ -36,9 +39,9 @@ describe('metrics', () => {
   });
 
   it('tracks booking cancelled count', async () => {
-    const booking = await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    const booking = await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-21',
@@ -47,7 +50,7 @@ describe('metrics', () => {
     });
 
     const before = metrics.getSnapshot();
-    await deleteBooking(booking.id);
+    await bookingService.deleteBooking(booking.id);
     const after = metrics.getSnapshot();
 
     expect(after.bookings.cancelled).toBe(before.bookings.cancelled + 1);
@@ -56,9 +59,9 @@ describe('metrics', () => {
   it('tracks lock acquisitions', async () => {
     const before = metrics.getSnapshot();
 
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-22',
@@ -71,9 +74,9 @@ describe('metrics', () => {
   });
 
   it('records assignment timing', async () => {
-    await createBooking({
-      restaurantId: 'R1',
-      sectorId: 'S1',
+    await bookingService.createBooking({
+      restaurantId: 'R1' as RestaurantId,
+      sectorId: 'S1' as SectorId,
       partySize: 2,
       durationMinutes: 60,
       date: '2025-12-23',
@@ -89,9 +92,9 @@ describe('metrics', () => {
     const before = metrics.getSnapshot();
 
     try {
-      await createBooking({
-        restaurantId: 'R1',
-        sectorId: 'S1',
+      await bookingService.createBooking({
+        restaurantId: 'R1' as RestaurantId,
+        sectorId: 'S1' as SectorId,
         partySize: 100,
         durationMinutes: 60,
         date: '2025-12-24',

@@ -1,8 +1,14 @@
-import { FastifyPluginAsync } from 'fastify';
-import { metrics } from '../store/metrics';
+import { FastifyInstance } from 'fastify';
+import { MetricsStore } from '../store/metrics';
 
-export const metricsRoutes: FastifyPluginAsync = async (app) => {
+interface MetricsRoutesOpts {
+  metrics: MetricsStore;
+}
+
+export async function metricsRoutes(app: FastifyInstance, opts: MetricsRoutesOpts) {
+  const { metrics } = opts;
+
   app.get('/metrics', async () => {
     return metrics.getSnapshot();
   });
-};
+}
